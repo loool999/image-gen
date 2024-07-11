@@ -1,0 +1,11 @@
+# Dev environment
+pip
+autopep8
+numpy
+opencv-python-headless
+tqdm
+pillow
+opencv-python
+
+# App
+flask
