@@ -1,5 +1,5 @@
 import operator
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageEnhance
 import random
 import numpy
 import copy
@@ -8,17 +8,17 @@ import shutil
 import cv2
 from tqdm import tqdm
 
-NUMBER_OF_STARTING_OBJECTS = 100
-SURVIVORS = 1/4
+NUMBER_OF_STARTING_OBJECTS = 200
+SURVIVORS = 1/14
 OLD_AGE = False
-CHILDREN_COUNT = 3
-GENERATIONS = 20
-MUTATION_RATE = 0.93
+CHILDREN_COUNT = 15
+GENERATIONS = 8
+MUTATION_RATE = 0.94
 MUTATION_RATE_COLOR = 0.98
-OBJECTS_COUNT = 50
+OBJECTS_COUNT = 300
 
 # Directories
-OBJECTS_DIR = "new_object"
+NEW_OBJECTS_DIR = "new_object"
 SINGLE_DIR = "single"
 DONE_DIR = "done"
 
@@ -27,7 +27,7 @@ os.makedirs(SINGLE_DIR, exist_ok=True)
 os.makedirs(DONE_DIR, exist_ok=True)
 
 # Load images from new_objects folder
-new_objects_images = [Image.open(os.path.join(OBJECTS_DIR, file)).convert("RGBA") for file in os.listdir(OBJECTS_DIR) if file.endswith(('png', 'jpg', 'jpeg'))]
+new_objects_images = [Image.open(os.path.join(NEW_OBJECTS_DIR, file)).convert("RGBA") for file in os.listdir(NEW_OBJECTS_DIR) if file.endswith(('png', 'jpg', 'jpeg'))]
 
 # Open the goal image
 image = Image.open("image.jpg").convert("RGBA")
@@ -43,9 +43,18 @@ class Object:
         self.coordinates = [random.randint(0, canvas.width), random.randint(0, canvas.height)]
         self.angle = random.randint(0, 359)
         self.color = [random.randint(0, 256), random.randint(0, 256), random.randint(0, 256)]
-
+        
     def draw(self, canvas):
         object_img = self.image.rotate(self.angle, expand=True)
+        bbox = object_img.getbbox()  # Get bounding box of the non-transparent area
+        object_img = object_img.crop(bbox)  # Crop to the bounding box
+
+        overlay = Image.new("RGBA", object_img.size, tuple(self.color + [128]))  # 128 for 50% opacity
+        mask = object_img.split()[3]  # Get alpha channel as mask
+        overlay.putalpha(mask)  # Apply mask to overlay
+
+        object_img = Image.alpha_composite(object_img, overlay)  # Composite overlay with the original image
+        
         x, y = self.coordinates[0] - (object_img.size[0] // 2), self.coordinates[1] - (object_img.size[1] // 2)
         canvas.paste(object_img, (x, y), object_img)
 
@@ -57,8 +66,22 @@ class Object:
             child.coordinates[0] += random.choices(x_range, weights=[MUTATION_RATE ** abs(x) for x in x_range], k=1)[0]
             child.coordinates[1] += random.choices(y_range, weights=[MUTATION_RATE ** abs(x) for x in y_range], k=1)[0]
 
+            size_x_range = range(-self.size[0]+1, image.width-self.size[0])
+            size_y_range = range(-self.size[1]+1, image.height-self.size[1])
+            child.size = list(self.size)
+            child.size[0] += random.choices(size_x_range, weights=[MUTATION_RATE ** abs(x) for x in size_x_range], k=1)[0]
+            child.size[1] += random.choices(size_y_range, weights=[MUTATION_RATE ** abs(x) for x in size_y_range], k=1)[0]
+            self.size = tuple(child.size)
             angle_range = range(-360, 360)
             child.angle += random.choices(angle_range, weights=[MUTATION_RATE ** abs(x) for x in angle_range], k=1)[0]
+
+            red_range = range(-self.color[0], 255 - self.color[0])
+            green_range = range(-self.color[1], 255 - self.color[1])
+            blue_range = range(-self.color[2], 255 - self.color[2])
+
+            child.color[0] += random.choices(red_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in red_range], k=1)[0]
+            child.color[1] += random.choices(green_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in green_range], k=1)[0]
+            child.color[2] += random.choices(blue_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in blue_range], k=1)[0]
 
             hospital.append(child)
 
