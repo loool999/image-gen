@@ -8,14 +8,15 @@ import shutil
 import cv2
 from tqdm import tqdm
 
-NUMBER_OF_STARTING_OBJECTS = 200
-SURVIVORS = 1/14
+NUMBER_OF_STARTING_OBJECTS = 800
+SURVIVORS = 1/7
 OLD_AGE = False
-CHILDREN_COUNT = 15
-GENERATIONS = 8
-MUTATION_RATE = 0.94
+CHILDREN_COUNT = 6
+GENERATIONS = 15
+MUTATION_RATE = 0.93
+MUTATION_RATE_SIZE = 0.93
 MUTATION_RATE_COLOR = 0.98
-OBJECTS_COUNT = 300
+OBJECTS_COUNT = 200
 
 # Directories
 NEW_OBJECTS_DIR = "new_object"
@@ -64,24 +65,33 @@ class Object:
             x_range = range(-self.coordinates[0], image.width - self.coordinates[0])
             y_range = range(-self.coordinates[1], image.height - self.coordinates[1])
             child.coordinates[0] += random.choices(x_range, weights=[MUTATION_RATE ** abs(x) for x in x_range], k=1)[0]
-            child.coordinates[1] += random.choices(y_range, weights=[MUTATION_RATE ** abs(x) for x in y_range], k=1)[0]
+            child.coordinates[1] += random.choices(y_range, weights=[MUTATION_RATE ** abs(y) for y in y_range], k=1)[0]
 
-            size_x_range = range(-self.size[0]+1, image.width-self.size[0])
-            size_y_range = range(-self.size[1]+1, image.height-self.size[1])
-            child.size = list(self.size)
-            child.size[0] += random.choices(size_x_range, weights=[MUTATION_RATE ** abs(x) for x in size_x_range], k=1)[0]
-            child.size[1] += random.choices(size_y_range, weights=[MUTATION_RATE ** abs(x) for x in size_y_range], k=1)[0]
-            self.size = tuple(child.size)
-            angle_range = range(-360, 360)
-            child.angle += random.choices(angle_range, weights=[MUTATION_RATE ** abs(x) for x in angle_range], k=1)[0]
+            if random.random() < MUTATION_RATE_SIZE:
+                size_x_range = range(-self.size[0]+1, image.width-self.size[0])
+                size_y_range = range(-self.size[1]+1, image.height-self.size[1])
+                new_size = list(child.size)
+                new_size[0] += random.choices(size_x_range, weights=[MUTATION_RATE_SIZE ** abs(x) for x in size_x_range], k=1)[0]
+                new_size[1] += random.choices(size_y_range, weights=[MUTATION_RATE_SIZE ** abs(y) for y in size_y_range], k=1)[0]
 
-            red_range = range(-self.color[0], 255 - self.color[0])
-            green_range = range(-self.color[1], 255 - self.color[1])
-            blue_range = range(-self.color[2], 255 - self.color[2])
+                # Ensure the size doesn't go below a minimum threshold
+                new_size = (max(1, new_size[0]), max(1, new_size[1]))
 
-            child.color[0] += random.choices(red_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in red_range], k=1)[0]
-            child.color[1] += random.choices(green_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in green_range], k=1)[0]
-            child.color[2] += random.choices(blue_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in blue_range], k=1)[0]
+                # Resize the image based on new size
+                child.image = child.image.resize(new_size, Image.Resampling.LANCZOS)
+                child.size = tuple(new_size)
+
+            if random.random() < MUTATION_RATE:
+                angle_range = range(-360, 360)
+                child.angle += random.choices(angle_range, weights=[MUTATION_RATE ** abs(x) for x in angle_range], k=1)[0]
+
+            if random.random() < MUTATION_RATE_COLOR:
+                red_range = range(-self.color[0], 255 - self.color[0])
+                green_range = range(-self.color[1], 255 - self.color[1])
+                blue_range = range(-self.color[2], 255 - self.color[2])
+                child.color[0] += random.choices(red_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in red_range], k=1)[0]
+                child.color[1] += random.choices(green_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in green_range], k=1)[0]
+                child.color[2] += random.choices(blue_range, weights=[MUTATION_RATE_COLOR ** abs(x) for x in blue_range], k=1)[0]
 
             hospital.append(child)
 
@@ -117,3 +127,4 @@ for obj_idx in tqdm(range(OBJECTS_COUNT), desc="Processing Objects"):
     canvas.save(f"{SINGLE_DIR}/object_{obj_idx+1}.png")
 
 canvas.save(f"{DONE_DIR}/canvas.png")
+
