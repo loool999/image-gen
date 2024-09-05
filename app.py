@@ -131,3 +131,4 @@ for obj_idx in tqdm(range(OBJECTS_COUNT), desc="Processing Objects"):
     canvas.save(f"{SINGLE_DIR}/object_{obj_idx+1}.png")
 
 canvas.save(f"{DONE_DIR}/canvas.png")
+
