@@ -40,5 +40,5 @@ def find_24(numbers):
     print("No solutions were found.")
     return False
 
-numbers = [4, 3, 7, 8]
+numbers = [4, 9, 1, 16]
 find_24(numbers)
